@@ -43,7 +43,7 @@ def get_info():
         
         last_request_time = datetime.now()
         
-        # yt-dlp - PO Token olmadan çalışan ayarlar (2025)
+        # yt-dlp - PO Token gerektirmeyen client'lar (2025 - Official Guide)
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
@@ -53,23 +53,23 @@ def get_info():
             'fragment_retries': 15,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['mweb', 'ios'],  # PO Token gerektirmeyen client'lar
+                    'player_client': ['tv_simply'],  # PO Token gerektirmiyor!
                     'player_skip': ['webpage', 'js', 'configs'],
                 }
             },
             'format': 'bestaudio',
         }
         
-        # PO Token gerektirmeyen client'lar (2025 - Wiki önerisi)
+        # PO Token gerektirmeyen client'lar (YouTube Official Guide 2025)
         methods = [
-            # Yöntem 1: mweb (mobile web - PO Token yok, Wiki önerisi)
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['mweb'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 2: iOS (genelde PO Token gerektirmiyor)
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 3: Android Embedded
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_embedded'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 4: TV Embedded
+            # Yöntem 1: tv_simply (PO Token yok, cookies gerektirmiyor - BEST!)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['tv_simply'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 2: tv_embedded (PO Token yok ama cookies gerekiyor)
             {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['tv_embedded'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 3: android_vr (PO Token yok)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_vr'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 4: web_embedded (PO Token yok - sadece embeddable videolar)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['web_embedded'], 'player_skip': ['webpage', 'js', 'configs']}}},
         ]
         
         for i, method_opts in enumerate(methods):
@@ -122,7 +122,7 @@ def download():
         unique_id = str(uuid.uuid4())
         output_path = os.path.join(DOWNLOAD_FOLDER, f'yt_audio_{unique_id}')
         
-        # PO Token olmadan indirme (2025 - Wiki önerisi)
+        # PO Token gerektirmeyen client - indirme (2025 Official Guide)
         ydl_opts = {
             'format': 'bestaudio',
             'postprocessors': [{
@@ -138,22 +138,22 @@ def download():
             'fragment_retries': 15,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['mweb', 'ios'],
+                    'player_client': ['tv_simply'],  # PO Token gerektirmiyor!
                     'player_skip': ['webpage', 'js', 'configs'],
                 }
             },
         }
         
-        # PO Token gerektirmeyen client'lar (Wiki önerisi)
+        # PO Token gerektirmeyen client'lar (YouTube Official Guide)
         methods = [
-            # Yöntem 1: mweb (mobile web - PO Token yok)
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['mweb'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 2: iOS
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 3: Android Embedded
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_embedded'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 4: TV Embedded
+            # Yöntem 1: tv_simply (PO Token yok, cookies gerektirmiyor)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['tv_simply'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 2: tv_embedded (PO Token yok)
             {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['tv_embedded'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 3: android_vr (PO Token yok)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_vr'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 4: web_embedded (PO Token yok)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['web_embedded'], 'player_skip': ['webpage', 'js', 'configs']}}},
         ]
         
         for i, method_opts in enumerate(methods):
