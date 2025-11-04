@@ -27,38 +27,32 @@ def get_info():
         if not url:
             return jsonify({'error': 'URL gerekli'}), 400
         
-        # yt-dlp GitHub'dan önerilen ayarlar - Bilgi alma için
+        # yt-dlp GitHub'dan önerilen ayarlar - Bot korumasını aşma
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
-            'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-            'referer': 'https://www.youtube.com/',
-            'sleep_interval': random.randint(3, 8),
-            'max_sleep_interval': 15,
             'socket_timeout': 60,
-            'retries': 5,
-            'fragment_retries': 5,
+            'retries': 10,
+            'fragment_retries': 10,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['ios', 'android', 'web'],  # Sadeleştirilmiş
+                    'player_client': ['android_creator'],  # En güvenilir client
+                    'player_skip': ['webpage', 'configs'],  # Bot korumasını atla
                 }
             },
-            'http_headers': {
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
-                'Accept-Encoding': 'gzip, deflate',
-                'DNT': '1',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-            }
         }
         
-        # yt-dlp GitHub önerileri - Farklı yöntemler dene
+        # yt-dlp GitHub önerileri - Farklı yöntemler dene (güncel)
         methods = [
-            ydl_opts,  # İlk yöntem - iOS
-            {**ydl_opts, 'user_agent': 'Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36', 'extractor_args': {'youtube': {'player_client': ['android']}}},  # Android
-            {**ydl_opts, 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 'extractor_args': {'youtube': {'player_client': ['web']}}},  # Windows
+            # Yöntem 1: Android Creator (en güvenilir)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_creator'], 'player_skip': ['webpage', 'configs']}}},
+            # Yöntem 2: iOS
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios'], 'player_skip': ['webpage', 'configs']}}},
+            # Yöntem 3: Android
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android'], 'player_skip': ['webpage', 'configs']}}},
+            # Yöntem 4: mweb (mobil web - son çare)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['mweb'], 'player_skip': ['webpage', 'configs']}}},
         ]
         
         for i, method_opts in enumerate(methods):
@@ -94,9 +88,9 @@ def download():
         unique_id = str(uuid.uuid4())
         output_path = os.path.join(DOWNLOAD_FOLDER, f'yt_audio_{unique_id}')
         
-        # En güçlü bot koruması aşma ayarları - İndirme için (yt-dlp GitHub'dan önerilen format)
+        # Bot korumasını aşma ayarları - İndirme için (güncel)
         ydl_opts = {
-            'format': 'bestaudio*',  # GitHub'da önerilen format - tüm ses formatlarını kabul eder
+            'format': 'bestaudio*',  # En iyi ses formatı
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'wav',
@@ -105,33 +99,27 @@ def download():
             'outtmpl': output_path,
             'quiet': True,
             'no_warnings': True,
-            'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-            'referer': 'https://www.youtube.com/',
-            'sleep_interval': random.randint(3, 8),
-            'max_sleep_interval': 15,
             'socket_timeout': 60,
-            'retries': 5,
-            'fragment_retries': 5,
+            'retries': 10,
+            'fragment_retries': 10,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['ios', 'android', 'web'],  # Sadeleştirilmiş client listesi
+                    'player_client': ['android_creator'],
+                    'player_skip': ['webpage', 'configs'],
                 }
             },
-            'http_headers': {
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
-                'Accept-Encoding': 'gzip, deflate',
-                'DNT': '1',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-            }
         }
         
-        # yt-dlp GitHub'dan önerilen formatlar - bestaudio* tüm ses formatlarını kabul eder
+        # Farklı client'lar ile deneme
         methods = [
-            ydl_opts,  # İlk yöntem - iOS + bestaudio*
-            {**ydl_opts, 'format': 'bestaudio*', 'user_agent': 'Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36', 'extractor_args': {'youtube': {'player_client': ['android']}}},  # Android
-            {**ydl_opts, 'format': 'ba*', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 'extractor_args': {'youtube': {'player_client': ['web']}}},  # Windows
+            # Yöntem 1: Android Creator
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_creator'], 'player_skip': ['webpage', 'configs']}}},
+            # Yöntem 2: iOS
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios'], 'player_skip': ['webpage', 'configs']}}},
+            # Yöntem 3: Android
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android'], 'player_skip': ['webpage', 'configs']}}},
+            # Yöntem 4: mweb
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['mweb'], 'player_skip': ['webpage', 'configs']}}},
         ]
         
         for i, method_opts in enumerate(methods):
