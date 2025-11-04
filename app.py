@@ -27,7 +27,7 @@ def get_info():
         if not url:
             return jsonify({'error': 'URL gerekli'}), 400
         
-        # yt-dlp GitHub'dan önerilen ayarlar - Bot korumasını aşma
+        # yt-dlp GitHub'dan önerilen ayarlar - 2025 Bot korumasını aşma
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
@@ -37,22 +37,26 @@ def get_info():
             'fragment_retries': 10,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android_creator'],  # En güvenilir client
-                    'player_skip': ['webpage', 'configs'],  # Bot korumasını atla
+                    'player_client': ['ios', 'android_creator'],  # iOS öncelikli
+                    'player_skip': ['webpage', 'js', 'configs'],  # Tüm kontrolleri atla
+                    'skip': ['hls', 'dash'],  # Sadece progressive formatlar
                 }
             },
+            'format': 'bestaudio[ext=m4a]/bestaudio',  # m4a tercih et
         }
         
-        # yt-dlp GitHub önerileri - Farklı yöntemler dene (güncel)
+        # yt-dlp 2025 önerileri - iOS öncelikli + fallback'ler
         methods = [
-            # Yöntem 1: Android Creator (en güvenilir)
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_creator'], 'player_skip': ['webpage', 'configs']}}},
+            # Yöntem 1: iOS Music (en az engellenen)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios_music'], 'player_skip': ['webpage', 'js', 'configs']}}},
             # Yöntem 2: iOS
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios'], 'player_skip': ['webpage', 'configs']}}},
-            # Yöntem 3: Android
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android'], 'player_skip': ['webpage', 'configs']}}},
-            # Yöntem 4: mweb (mobil web - son çare)
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['mweb'], 'player_skip': ['webpage', 'configs']}}},
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 3: Android Creator
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_creator'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 4: Android Music
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_music'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 5: mweb (son çare)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['mweb'], 'player_skip': ['webpage', 'js', 'configs']}}},
         ]
         
         for i, method_opts in enumerate(methods):
@@ -88,9 +92,9 @@ def download():
         unique_id = str(uuid.uuid4())
         output_path = os.path.join(DOWNLOAD_FOLDER, f'yt_audio_{unique_id}')
         
-        # Bot korumasını aşma ayarları - İndirme için (güncel)
+        # Bot korumasını aşma ayarları - İndirme için (2025 güncel)
         ydl_opts = {
-            'format': 'bestaudio*',  # En iyi ses formatı
+            'format': 'bestaudio[ext=m4a]/bestaudio',  # m4a tercih et
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'wav',
@@ -104,22 +108,25 @@ def download():
             'fragment_retries': 10,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android_creator'],
-                    'player_skip': ['webpage', 'configs'],
+                    'player_client': ['ios', 'android_creator'],
+                    'player_skip': ['webpage', 'js', 'configs'],
+                    'skip': ['hls', 'dash'],
                 }
             },
         }
         
-        # Farklı client'lar ile deneme
+        # 2025 güncel client'lar ile deneme
         methods = [
-            # Yöntem 1: Android Creator
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_creator'], 'player_skip': ['webpage', 'configs']}}},
+            # Yöntem 1: iOS Music (en az engellenen)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios_music'], 'player_skip': ['webpage', 'js', 'configs']}}},
             # Yöntem 2: iOS
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios'], 'player_skip': ['webpage', 'configs']}}},
-            # Yöntem 3: Android
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android'], 'player_skip': ['webpage', 'configs']}}},
-            # Yöntem 4: mweb
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['mweb'], 'player_skip': ['webpage', 'configs']}}},
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 3: Android Creator
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_creator'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 4: Android Music
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_music'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 5: mweb
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['mweb'], 'player_skip': ['webpage', 'js', 'configs']}}},
         ]
         
         for i, method_opts in enumerate(methods):
