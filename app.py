@@ -7,11 +7,16 @@ import tempfile
 import shutil
 import time
 import random
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
 # Geçici indirme klasörü
 DOWNLOAD_FOLDER = tempfile.gettempdir()
+
+# Rate limiting için
+last_request_time = None
+REQUEST_DELAY = 8  # YouTube rate limit için 8 saniye gecikme
 
 @app.route('/')
 def index():
@@ -20,6 +25,15 @@ def index():
 @app.route('/get-info', methods=['POST'])
 def get_info():
     """Video bilgilerini al"""
+    global last_request_time
+    
+    # Rate limiting - YouTube rate limit aşımını önle
+    if last_request_time:
+        elapsed = (datetime.now() - last_request_time).total_seconds()
+        if elapsed < REQUEST_DELAY:
+            wait_time = REQUEST_DELAY - elapsed
+            time.sleep(wait_time)
+    
     try:
         data = request.get_json()
         url = data.get('url')
@@ -27,36 +41,35 @@ def get_info():
         if not url:
             return jsonify({'error': 'URL gerekli'}), 400
         
-        # yt-dlp GitHub'dan önerilen ayarlar - 2025 Bot korumasını aşma
+        last_request_time = datetime.now()
+        
+        # yt-dlp - PO Token olmadan çalışan ayarlar (2025)
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
-            'socket_timeout': 60,
-            'retries': 10,
-            'fragment_retries': 10,
+            'socket_timeout': 90,
+            'retries': 15,
+            'fragment_retries': 15,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['ios', 'android_creator'],  # iOS öncelikli
-                    'player_skip': ['webpage', 'js', 'configs'],  # Tüm kontrolleri atla
-                    'skip': ['hls', 'dash'],  # Sadece progressive formatlar
+                    'player_client': ['mweb', 'ios'],  # PO Token gerektirmeyen client'lar
+                    'player_skip': ['webpage', 'js', 'configs'],
                 }
             },
-            'format': 'bestaudio[ext=m4a]/bestaudio',  # m4a tercih et
+            'format': 'bestaudio',
         }
         
-        # yt-dlp 2025 önerileri - iOS öncelikli + fallback'ler
+        # PO Token gerektirmeyen client'lar (2025 - Wiki önerisi)
         methods = [
-            # Yöntem 1: iOS Music (en az engellenen)
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios_music'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 2: iOS
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 3: Android Creator
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_creator'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 4: Android Music
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_music'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 5: mweb (son çare)
+            # Yöntem 1: mweb (mobile web - PO Token yok, Wiki önerisi)
             {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['mweb'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 2: iOS (genelde PO Token gerektirmiyor)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 3: Android Embedded
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_embedded'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 4: TV Embedded
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['tv_embedded'], 'player_skip': ['webpage', 'js', 'configs']}}},
         ]
         
         for i, method_opts in enumerate(methods):
@@ -71,9 +84,15 @@ def get_info():
                         'channel': info.get('channel', info.get('uploader', 'Bilinmeyen')),
                     })
             except Exception as e:
+                error_msg = str(e).lower()
+                if 'sign in to confirm' in error_msg or 'bot' in error_msg:
+                    # Bot koruması - daha uzun bekle
+                    if i < len(methods) - 1:
+                        time.sleep(10)
+                        continue
                 if i == len(methods) - 1:  # Son yöntem de başarısız
                     raise e
-                time.sleep(3)  # Yöntemler arası bekleme
+                time.sleep(5)  # Yöntemler arası bekleme
     
     except Exception as e:
         return jsonify({'error': f'Hata: {str(e)}'}), 400
@@ -81,6 +100,15 @@ def get_info():
 @app.route('/download', methods=['POST'])
 def download():
     """Videoyu WAV formatında indir"""
+    global last_request_time
+    
+    # Rate limiting
+    if last_request_time:
+        elapsed = (datetime.now() - last_request_time).total_seconds()
+        if elapsed < REQUEST_DELAY:
+            wait_time = REQUEST_DELAY - elapsed
+            time.sleep(wait_time)
+    
     try:
         data = request.get_json()
         url = data.get('url')
@@ -88,13 +116,15 @@ def download():
         if not url:
             return jsonify({'error': 'URL gerekli'}), 400
         
+        last_request_time = datetime.now()
+        
         # Benzersiz dosya adı oluştur
         unique_id = str(uuid.uuid4())
         output_path = os.path.join(DOWNLOAD_FOLDER, f'yt_audio_{unique_id}')
         
-        # Bot korumasını aşma ayarları - İndirme için (2025 güncel)
+        # PO Token olmadan indirme (2025 - Wiki önerisi)
         ydl_opts = {
-            'format': 'bestaudio[ext=m4a]/bestaudio',  # m4a tercih et
+            'format': 'bestaudio',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'wav',
@@ -103,30 +133,27 @@ def download():
             'outtmpl': output_path,
             'quiet': True,
             'no_warnings': True,
-            'socket_timeout': 60,
-            'retries': 10,
-            'fragment_retries': 10,
+            'socket_timeout': 90,
+            'retries': 15,
+            'fragment_retries': 15,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['ios', 'android_creator'],
+                    'player_client': ['mweb', 'ios'],
                     'player_skip': ['webpage', 'js', 'configs'],
-                    'skip': ['hls', 'dash'],
                 }
             },
         }
         
-        # 2025 güncel client'lar ile deneme
+        # PO Token gerektirmeyen client'lar (Wiki önerisi)
         methods = [
-            # Yöntem 1: iOS Music (en az engellenen)
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios_music'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 1: mweb (mobile web - PO Token yok)
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['mweb'], 'player_skip': ['webpage', 'js', 'configs']}}},
             # Yöntem 2: iOS
             {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['ios'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 3: Android Creator
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_creator'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 4: Android Music
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_music'], 'player_skip': ['webpage', 'js', 'configs']}}},
-            # Yöntem 5: mweb
-            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['mweb'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 3: Android Embedded
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['android_embedded'], 'player_skip': ['webpage', 'js', 'configs']}}},
+            # Yöntem 4: TV Embedded
+            {**ydl_opts, 'extractor_args': {'youtube': {'player_client': ['tv_embedded'], 'player_skip': ['webpage', 'js', 'configs']}}},
         ]
         
         for i, method_opts in enumerate(methods):
@@ -137,15 +164,21 @@ def download():
                     break
             except Exception as e:
                 error_msg = str(e).lower()
+                if 'sign in to confirm' in error_msg or 'bot' in error_msg:
+                    # Bot koruması - daha uzun bekle
+                    if i < len(methods) - 1:
+                        print(f"Bot koruması algılandı, alternatif client deneniyor... ({i+1}/{len(methods)})")
+                        time.sleep(12)
+                        continue
                 if 'requested format is not available' in error_msg:
                     # Format hatası - alternatif format dene
                     if i < len(methods) - 1:
                         print(f"Format hatası, alternatif yöntem deneniyor... ({i+1}/{len(methods)})")
-                        time.sleep(2)
+                        time.sleep(3)
                         continue
                 if i == len(methods) - 1:  # Son yöntem de başarısız
                     raise e
-                time.sleep(3)  # Yöntemler arası bekleme
+                time.sleep(6)  # Yöntemler arası bekleme
         
         # İndirilen dosyayı bul
         wav_file = f"{output_path}.wav"
